@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:interassignment1/models/task_model.dart';
+import 'package:interassignment1/providers/task_list_provider.dart';
 
-class TaskFormScreen extends StatefulWidget {
+class TaskFormScreen extends ConsumerStatefulWidget {
   final String? initialTitle;
   final String? initialDescription;
   final Priority? initialPriority;
   final DateTime? initialDueDate;
   final bool isEditMode;
-  final void Function(TaskModel) onSave;
+  final String? taskId; // Add taskId for editing
 
   const TaskFormScreen({
     super.key,
+    this.taskId,
     this.initialTitle,
     this.initialDescription,
     this.initialPriority,
@@ -19,11 +22,13 @@ class TaskFormScreen extends StatefulWidget {
     required this.onSave,
   });
 
-  @override
-  State<TaskFormScreen> createState() => _TaskFormScreenState();
-}
+  const TaskFormScreen.edit({super.key, required this.taskId})
+      : initialTitle = null,
+        initialDescription = null,
+        initialPriority = null,
+        initialDueDate = null,
+        isEditMode = true;
 
-class _TaskFormScreenState extends State<TaskFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
@@ -31,12 +36,18 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   DateTime _selectedDate = DateTime.now();
 
   @override
+  ConsumerState<TaskFormScreen> createState() => _TaskFormScreenState();
+}
+
+class _TaskFormScreenState extends ConsumerState<TaskFormScreen> {
+  @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.initialTitle);
-    _descriptionController = TextEditingController(text: widget.initialDescription);
-    _selectedPriority = widget.initialPriority ?? Priority.low;
-    _selectedDate = widget.initialDueDate ?? DateTime.now();
+    final task = widget.isEditMode ? ref.read(taskListProvider).getTaskById(widget.taskId!) : null;
+    _titleController = TextEditingController(text: task?.title ?? widget.initialTitle);
+    _descriptionController = TextEditingController(text: task?.description ?? widget.initialDescription);
+    _selectedPriority = task?.priority ?? widget.initialPriority ?? Priority.low;
+    _selectedDate = task?.dueDate ?? widget.initialDueDate ?? DateTime.now();
   }
 
   @override
@@ -69,8 +80,17 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         dueDate: _selectedDate,
         isCompleted: false,
       );
-      
-      widget.onSave(newTask);
+
+      if (widget.isEditMode) {
+        final updatedTask = newTask.copyWith(id: widget.taskId);
+        ref.read(taskListProvider.notifier).updateTask(updatedTask);
+      } else {
+        ref.read(taskListProvider.notifier).addTask(newTask);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.isEditMode ? 'Task updated!' : 'Task added!')),
+      );
       Navigator.pop(context);
     }
   }

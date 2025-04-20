@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:interassignment1/providers/auth_provider.dart';
 import 'package:interassignment1/screens/reigster_screen.dart';
+import 'package:interassignment1/screens/task_list_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final emailController = TextEditingController();
@@ -43,7 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) { 
+    final authNotifier = ref.read(authProvider.notifier);
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -131,14 +135,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
-                            // Proceed with login logic
                             final email = emailController.text.trim();
                             final password = passwordController.text;
 
-                            print('Email: $email');
-                            print('Password: $password');
+                            final success = await authNotifier.signIn(email, password);
+
+                            if (success) {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => const TaskListScreen(),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Login failed. Check your credentials.')),
+                              );
+                            }
                           }
                         },
                         child: const Text(

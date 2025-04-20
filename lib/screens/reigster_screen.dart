@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:interassignment1/screens/login_screen.dart';
-
+import 'package:interassignment1/providers/auth_provider.dart';
+import 'package:interassignment1/screens/task_list_screen.dart';
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -63,7 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -182,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () {
+                        onPressed: (){
                           if (_formKey.currentState!.validate()) {
                             final name = nameController.text.trim();
                             final email = emailController.text.trim();
@@ -190,7 +192,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             debugPrint('Name: $name');
                             debugPrint('Email: $email');
-                            debugPrint('Password: $password');
+                            debugPrint('Password: $password');      
+                            
+                            context.read(authProvider.notifier).register(email, password).then((error) {
+                              if (error == null) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const TaskListScreen()),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(error),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            });
+                            
+                            
                             // TODO: Proceed with registration logic
                           }
                         },
