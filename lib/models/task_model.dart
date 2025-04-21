@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum Priority { low, medium, high }
 
 class TaskModel {
+  final String? id; // Optional ID
   final String title;
   final String description;
   final DateTime dueDate;
@@ -10,6 +11,7 @@ class TaskModel {
   final bool isCompleted;
 
   TaskModel({
+    this.id, // Not required
     required this.title,
     required this.description,
     required this.dueDate,
@@ -44,8 +46,9 @@ class TaskModel {
     };
   }
 
-  factory TaskModel.fromMap(Map<String, dynamic> map) {
+  factory TaskModel.fromMap(Map<String, dynamic> map, {String? id}) {
     return TaskModel(
+      id: id, 
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       dueDate: (map['dueDate'] as Timestamp).toDate(),

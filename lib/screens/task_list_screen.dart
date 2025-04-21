@@ -1,7 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:interassignment1/components/task_card.dart';
 import 'package:interassignment1/models/task_model.dart';
+import 'package:interassignment1/screens/login_screen.dart';
 import 'package:interassignment1/screens/task_form_screen.dart';
+import 'package:interassignment1/services/auth_service.dart';
+import 'package:interassignment1/services/task_service.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -13,39 +17,9 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   String selectedPriority = 'All';
   bool? showCompleted; // null means "All Tasks"
+  User? user = AuthService().getCurrentUser();
 
-  final List<TaskModel> tasks = [
-    TaskModel(
-      title: 'Buy groceries',
-      description: 'Milk, eggs, and bread',
-      dueDate: DateTime.now().add(const Duration(days: 1)),
-      priority: Priority.high,
-      isCompleted: true,
-    ),
-    TaskModel(
-      title: 'Walk the dog',
-      description: 'Evening walk around the park',
-      dueDate: DateTime.now().add(const Duration(days: 2)),
-      priority: Priority.low,
-      isCompleted: false,
-    ),
-    TaskModel(
-      title: 'Finish project',
-      description: 'Submit the final report',
-      dueDate: DateTime.now().add(const Duration(days: 3)),
-      priority: Priority.medium,
-      isCompleted: false,
-    ),
-    TaskModel(
-      title: 'Call John',
-      description: 'Discuss weekend plans',
-      dueDate: DateTime.now().add(const Duration(days: 4)),
-      priority: Priority.high,
-      isCompleted: true,
-    ),
-  ];
-
-  List<TaskModel> get filteredTasks {
+  List<TaskModel> filterTasks(List<TaskModel> tasks) {
     final filtered =
         tasks.where((task) {
           if (selectedPriority != 'All' &&
@@ -67,30 +41,31 @@ class _TaskListScreenState extends State<TaskListScreen> {
     return filtered;
   }
 
-  void _editTask(int index) {
+  void _editTask(TaskModel task) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (context) => TaskFormScreen(
-              initialTitle: tasks[index].title,
-              initialDescription: tasks[index].description,
-              initialPriority: tasks[index].priority,
-              initialDueDate: tasks[index].dueDate,
+              initialTitle: task.title,
+              initialDescription: task.description,
+              initialPriority: task.priority,
+              initialDueDate: task.dueDate,
               isEditMode: true,
               onSave: (TaskModel updatedTask) {
-                setState(() {
-                  // Create a new TaskModel with updated data while preserving the completion status
-                  tasks[index] = TaskModel(
-                    title: updatedTask.title,
-                    description: updatedTask.description,
-                    dueDate: updatedTask.dueDate,
-                    priority: updatedTask.priority,
-                    isCompleted:
-                        tasks[index]
-                            .isCompleted, // Preserve the completion status
-                  );
-                });
+                // Create a new TaskModel with updated data while preserving the completion status
+                final updatedTaskWithId = TaskModel(
+                  id: task.id, // Preserve the ID
+                  title: updatedTask.title,
+                  description: updatedTask.description,
+                  dueDate: updatedTask.dueDate,
+                  priority: updatedTask.priority,
+                  isCompleted:
+                      task.isCompleted, // Preserve the completion status
+                );
+
+                TaskService().updateTask(updatedTaskWithId, user!.uid);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Task updated successfully!')),
                 );
@@ -100,23 +75,29 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
   }
 
-  void _toggleCompletion(int index) {
-    setState(() {
-      tasks[index] = TaskModel(
-        title: tasks[index].title,
-        description: tasks[index].description,
-        dueDate: tasks[index].dueDate,
-        priority: tasks[index].priority,
-        isCompleted: !tasks[index].isCompleted,
-      );
-    });
+  void _toggleCompletion(TaskModel task) {
+    final updatedTask = TaskModel(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      priority: task.priority,
+      isCompleted: !task.isCompleted,
+    );
+
+    TaskService().updateTask(updatedTask, user!.uid);
+  }
+
+  void _deleteTask(TaskModel task) {
+    TaskService().deleteTask(task.id!, user!.uid);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF6F7F6),
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.deepPurpleAccent,
         title: const Text(
           'My Tasks',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -173,25 +154,47 @@ class _TaskListScreenState extends State<TaskListScreen> {
             message: 'Logout',
             child: IconButton(
               icon: const Icon(Icons.logout, color: Colors.white),
-              onPressed: () => debugPrint('User logged out'),
+              onPressed: () {
+                AuthService().signOut().then(
+                  (_) => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body:
-          filteredTasks.isEmpty
+      body: StreamBuilder<List<TaskModel>>(
+        stream: TaskService().getTasks(user!.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No tasks found'));
+          }
+
+          final tasks = snapshot.data!;
+          final filteredTasks = filterTasks(tasks);
+
+          return filteredTasks.isEmpty
               ? const Center(child: Text("No tasks match your filter."))
               : ListView.builder(
                 itemCount: filteredTasks.length,
                 itemBuilder: (_, index) {
                   final task = filteredTasks[index];
-                  final originalIndex = tasks.indexOf(task);
 
                   return Dismissible(
-                    key: Key(task.title),
+                    key: Key(task.id ?? UniqueKey().toString()),
                     onDismissed: (_) {
-                      setState(() => tasks.removeAt(originalIndex));
+                      _deleteTask(task);
                       debugPrint("Removed task");
                     },
                     background: Container(
@@ -215,15 +218,17 @@ class _TaskListScreenState extends State<TaskListScreen> {
                           ).toLowerCase(),
                       isDone: task.isCompleted,
                       dueDate: task.dueDate,
-                      onEdit: () => _editTask(originalIndex),
-                      onToggle: (_) => _toggleCompletion(originalIndex),
+                      onEdit: () => _editTask(task),
+                      onToggle: (_) => _toggleCompletion(task),
                     ),
                   );
                 },
-              ),
+              );
+        },
+      ),
       floatingActionButton: FloatingActionButton.extended(
         tooltip: "Add Task",
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.deepPurpleAccent,
         foregroundColor: Colors.white,
         onPressed: () {
           Navigator.push(
@@ -232,9 +237,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
               builder:
                   (context) => TaskFormScreen(
                     onSave: (TaskModel newTask) {
-                      setState(() {
-                        tasks.add(newTask);
-                      });
+                      TaskService().createTask(newTask, user!.uid);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Task added successfully!'),

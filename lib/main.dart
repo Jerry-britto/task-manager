@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:interassignment1/firebase_options.dart';
 import 'package:interassignment1/screens/login_screen.dart';
-import 'package:interassignment1/screens/task_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +15,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: TaskListScreen(),
+      home: LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

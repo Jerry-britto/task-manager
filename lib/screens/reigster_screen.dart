@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:interassignment1/screens/login_screen.dart';
+import 'package:interassignment1/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,13 +27,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  String? _validateName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Please enter your full name';
-    }
-    return null;
   }
 
   String? _validateEmail(String? value) {
@@ -74,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const Icon(
                 Icons.check_circle_rounded,
                 size: 100,
-                color: Colors.deepPurple,
+                color: Colors.deepPurpleAccent,
               ),
               const SizedBox(height: 16),
               const Text(
@@ -86,20 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Full Name
-                    TextFormField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        hintText: 'Full name',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      validator: _validateName,
-                    ),
-                    const SizedBox(height: 20),
-
                     // Email
                     TextFormField(
                       controller: emailController,
@@ -176,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
+                          backgroundColor: Colors.deepPurpleAccent,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -191,7 +171,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             debugPrint('Name: $name');
                             debugPrint('Email: $email');
                             debugPrint('Password: $password');
-                            // TODO: Proceed with registration logic
+                            AuthService()
+                                .registerWithEmailPassword(email, password)
+                                .then(
+                                  (_) => Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (_) => const LoginScreen(),
+                                    ),
+                                  ),
+                                );
                           }
                         },
                         child: const Text(
