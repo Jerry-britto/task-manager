@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum Priority { low, medium, high }
 
 class TaskModel {
-  final String? id; // Optional ID
+  final String? id; 
   final String title;
   final String description;
   final DateTime dueDate;
@@ -11,7 +11,7 @@ class TaskModel {
   final bool isCompleted;
 
   TaskModel({
-    this.id, // Not required
+    this.id, 
     required this.title,
     required this.description,
     required this.dueDate,
